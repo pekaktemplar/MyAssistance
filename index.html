@@ -68,6 +68,17 @@
         
         #login-overlay.hidden { display: none; }
         #app-content.hidden { display: none; }
+        
+        /* Style for dynamic link inputs */
+        .link-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem; /* 8px */
+            margin-bottom: 0.5rem; /* Add space below each link input */
+        }
+        .link-input-group:last-child {
+             margin-bottom: 0; /* Remove space below the last input in a group */
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -278,22 +289,29 @@
                             <input type="number" id="invoicePrice" class="form-input mt-1 block w-full px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm">
                         </div>
                         <div class="md:col-span-2"></div>
-                        <div class="md:col-span-2">
-                            <label for="invoiceLink" class="block text-sm font-medium text-slate-700">Link Invoice</label>
-                            <input type="url" id="invoiceLink" placeholder="https://" class="form-input mt-1 block w-full px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm">
+                        
+                        <!-- Dynamic Link Sections -->
+                        <div class="md:col-span-2" id="invoiceLinkContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Link Invoice</label>
+                            <!-- Initial input added by JS -->
                         </div>
-                         <div class="md:col-span-2">
-                            <label for="medicalDocLink" class="block text-sm font-medium text-slate-700">Link Dok. Medis</label>
-                            <input type="url" id="medicalDocLink" placeholder="https://" class="form-input mt-1 block w-full px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm">
+                         <div class="md:col-span-2" id="medicalDocLinkContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Link Dok. Medis</label>
+                            <!-- Initial input added by JS -->
                         </div>
-                        <div class="md:col-span-2">
-                            <label for="guaranteeLetterLink" class="block text-sm font-medium text-slate-700">Link Surat Jaminan</label>
-                            <input type="url" id="guaranteeLetterLink" placeholder="https://" class="form-input mt-1 block w-full px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm">
+                        <div class="md:col-span-2" id="guaranteeLetterLinkContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Link Surat Jaminan</label>
+                            <!-- Initial input added by JS -->
+                        </div>
+                        <div class="md:col-span-2" id="nonMedicalDocLinkContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Link Dok. Non Medis</label>
+                            <!-- Initial input added by JS -->
                         </div>
                         <div id="medicalRecordLinkContainer" class="hidden md:col-span-2">
-                            <label for="medicalRecordLink" class="block text-sm font-medium text-slate-700">Link Medical Record</label>
-                            <input type="url" id="medicalRecordLink" placeholder="https://" class="form-input mt-1 block w-full px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm">
+                             <label class="block text-sm font-medium text-slate-700 mb-1">Link Medical Record (Homecare)</label>
+                            <!-- Initial input added by JS -->
                         </div>
+
                         <div class="md:col-span-2">
                             <label for="otherNotes" class="block text-sm font-medium text-slate-700">Keterangan Lain</label>
                             <textarea id="otherNotes" rows="3" class="form-input mt-1 block w-full px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm"></textarea>
@@ -400,6 +418,15 @@ const mainApp = () => {
     const cardModal = document.getElementById('cardModal');
     const closeCardBtn = document.getElementById('closeCardBtn');
     const editFromCardBtn = document.getElementById('editFromCardBtn');
+    
+    // Dynamic link container IDs
+    const linkContainerIds = [
+        'invoiceLinkContainer', 
+        'medicalDocLinkContainer', 
+        'guaranteeLetterLinkContainer', 
+        'nonMedicalDocLinkContainer',
+        'medicalRecordLinkContainer' // Keep this last as it's conditionally shown
+    ];
 
     let localSchedules = []; // Local cache of schedules
     const predefinedOfficerNames = ['dr. Agus', 'dr. Mitha', 'Eko', 'Ns. Dewi', 'Ns. Deliana', 'Ns. Komaliana', 'Ns. Ari', 'Ridwan'];
@@ -427,6 +454,7 @@ const mainApp = () => {
         return age;
     };
     
+    // --- Dynamic Officer Row Logic ---
     const addOfficerRow = (officer = {}) => {
         const officerRow = document.createElement('div');
         officerRow.className = 'officer-row grid grid-cols-1 sm:grid-cols-6 gap-4 items-end';
@@ -482,6 +510,104 @@ const mainApp = () => {
         freelanceBillingContainer.classList.toggle('hidden', !(serviceType === 'Home Visite' && hasFreelancer));
     };
 
+    // --- Dynamic Link Input Logic ---
+    const addLinkInput = (containerId, linkValue = '') => {
+        const container = document.getElementById(containerId);
+        const div = document.createElement('div');
+        div.className = 'link-input-group';
+        
+        const input = document.createElement('input');
+        input.type = 'url';
+        input.name = containerId.replace('Container', ''); // e.g., 'invoiceLink'
+        input.className = 'form-input flex-grow px-3 py-2 border border-[--color-bg-subtle] rounded-md shadow-sm focus:outline-none focus:ring-2';
+        input.placeholder = 'https://...';
+        input.value = linkValue;
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove-link-btn text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 transition-colors flex-shrink-0';
+        removeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+        removeBtn.onclick = () => div.remove();
+        
+        div.appendChild(input);
+        
+        // Only add remove button if it's not the very first input in the container
+        if (container.querySelectorAll('.link-input-group').length > 0) {
+            div.appendChild(removeBtn);
+        } else {
+             // Add a placeholder for alignment if it's the first input
+             const placeholder = document.createElement('div');
+             placeholder.className = 'w-9 h-9 flex-shrink-0'; // Match button size + padding
+             div.appendChild(placeholder);
+        }
+
+        container.appendChild(div);
+    };
+
+    const setupLinkContainers = () => {
+        linkContainerIds.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (!container) return; // Skip if container doesn't exist (like medicalRecordLinkContainer when hidden)
+
+            // Add the "Tambah Link" button
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'add-link-btn mt-2 flex items-center gap-1 text-sm text-[--color-primary] font-semibold hover:underline';
+            addButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span>Tambah Link</span>';
+            addButton.onclick = () => addLinkInput(containerId);
+            
+            // Clear previous button if exists and add the new one
+            const existingButton = container.querySelector('.add-link-btn');
+            if(existingButton) existingButton.remove();
+            container.appendChild(addButton);
+            
+            // Add the initial input field if none exists
+            if (container.querySelectorAll('.link-input-group').length === 0) {
+                 addLinkInput(containerId);
+            }
+        });
+    };
+    
+    const resetLinkContainers = () => {
+         linkContainerIds.forEach(containerId => {
+             const container = document.getElementById(containerId);
+             if (!container) return;
+             // Remove all but the label and the add button
+             container.querySelectorAll('.link-input-group').forEach(group => group.remove());
+             // Add back the initial input
+             addLinkInput(containerId);
+         });
+    };
+    
+    const populateLinkContainers = (schedule) => {
+         linkContainerIds.forEach(containerId => {
+             const container = document.getElementById(containerId);
+             if (!container) return;
+             const linkKey = containerId.replace('Container', 's'); // e.g., invoiceLinks
+             const links = schedule[linkKey] || [];
+             
+             // Clear existing inputs
+             container.querySelectorAll('.link-input-group').forEach(group => group.remove());
+             
+             if (links.length > 0) {
+                 links.forEach(link => addLinkInput(containerId, link));
+             } else {
+                 // Add one empty input if no links exist
+                 addLinkInput(containerId);
+             }
+         });
+    };
+    
+    const getLinksFromContainer = (containerId) => {
+        const container = document.getElementById(containerId);
+        if (!container) return [];
+        return Array.from(container.querySelectorAll('.link-input-group input[type="url"]'))
+                    .map(input => input.value.trim())
+                    .filter(value => value !== ''); // Only keep non-empty links
+    };
+
+
+    // --- Modal & Dialog Logic ---
     const openModal = (modalElement) => modalElement.classList.remove('hidden');
     const closeModal = (modalElement) => modalElement.classList.add('hidden');
     
@@ -496,6 +622,7 @@ const mainApp = () => {
     confirmCancel.addEventListener('click', () => { if(deleteResolver) deleteResolver(false); closeConfirmDialog(); });
     confirmDelete.addEventListener('click', () => { if(deleteResolver) deleteResolver(true); closeConfirmDialog(); });
 
+    // --- Data & Rendering Logic ---
     const listenForSchedules = () => {
         onSnapshot(scheduleCollection, (snapshot) => {
             localSchedules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -568,6 +695,7 @@ const mainApp = () => {
         formErrorMessage.classList.add('hidden');
         freelanceBillingContainer.classList.add('hidden');
         medicalRecordLinkContainer.classList.add('hidden');
+        resetLinkContainers(); // Reset dynamic links
     };
 
     const handleFormSubmit = async (e) => {
@@ -584,9 +712,24 @@ const mainApp = () => {
         
         const id = scheduleIdInput.value;
         const scheduleData = {
-            patientName: document.getElementById('patientName').value, patientDob: document.getElementById('patientDob').value, patientGender: document.getElementById('patientGender').value, patientAddress: document.getElementById('patientAddress').value, referenceNumber: document.getElementById('referenceNumber').value, insuranceClient: document.getElementById('insuranceClient').value, assistanceType: document.getElementById('assistanceType').value, activityDate: document.getElementById('activityDate').value, activityTime: document.getElementById('activityTime').value, serviceRoute: document.getElementById('serviceRoute').value, serviceZone: document.getElementById('serviceZone').value, extraMonitoring: document.getElementById('extraMonitoring').checked, officers: officers, freelanceBillingDetails: document.getElementById('freelanceBillingDetails').value, servicePrice: document.getElementById('servicePrice').value, invoicePrice: document.getElementById('invoicePrice').value, invoiceLink: document.getElementById('invoiceLink').value, medicalDocLink: document.getElementById('medicalDocLink').value, guaranteeLetterLink: document.getElementById('guaranteeLetterLink').value, medicalRecordLink: document.getElementById('medicalRecordLink').value, otherNotes: document.getElementById('otherNotes').value,
+            patientName: document.getElementById('patientName').value, patientDob: document.getElementById('patientDob').value, patientGender: document.getElementById('patientGender').value, patientAddress: document.getElementById('patientAddress').value, referenceNumber: document.getElementById('referenceNumber').value, insuranceClient: document.getElementById('insuranceClient').value, assistanceType: document.getElementById('assistanceType').value, activityDate: document.getElementById('activityDate').value, activityTime: document.getElementById('activityTime').value, serviceRoute: document.getElementById('serviceRoute').value, serviceZone: document.getElementById('serviceZone').value, extraMonitoring: document.getElementById('extraMonitoring').checked, officers: officers, freelanceBillingDetails: document.getElementById('freelanceBillingDetails').value, servicePrice: document.getElementById('servicePrice').value, invoicePrice: document.getElementById('invoicePrice').value, 
+            // Collect links from dynamic containers
+            invoiceLinks: getLinksFromContainer('invoiceLinkContainer'), 
+            medicalDocLinks: getLinksFromContainer('medicalDocLinkContainer'), 
+            guaranteeLetterLinks: getLinksFromContainer('guaranteeLetterLinkContainer'), 
+            nonMedicalDocLinks: getLinksFromContainer('nonMedicalDocLinkContainer'),
+            medicalRecordLinks: getLinksFromContainer('medicalRecordLinkContainer'), 
+            otherNotes: document.getElementById('otherNotes').value,
             isComplete: document.getElementById('isComplete').checked,
         };
+
+        // Remove empty link arrays before saving to Firestore to keep data clean
+        Object.keys(scheduleData).forEach(key => {
+            if (key.endsWith('Links') && Array.isArray(scheduleData[key]) && scheduleData[key].length === 0) {
+                delete scheduleData[key];
+            }
+        });
+
 
         try {
             if (id) {
@@ -610,7 +753,7 @@ const mainApp = () => {
             alert('Silakan pilih periode tanggal.');
             return;
         }
-        // For export, we use all localSchedules, ignoring the 'isComplete' flag
+        // Use all localSchedules for export
         const filtered = localSchedules.filter(s => s.activityDate >= startDate && s.activityDate <= endDate);
         if (filtered.length === 0) {
             alert('Tidak ada data pada periode yang dipilih.');
@@ -618,13 +761,34 @@ const mainApp = () => {
         }
         const dataForExport = filtered.map(s => ({
             'Status': s.isComplete ? 'Selesai' : 'Aktif',
-            'No. Ref': s.referenceNumber, 'Klien': s.insuranceClient, 'Pasien': s.patientName, 'Tgl Lahir': s.patientDob, 'Gender': s.patientGender, 'Alamat': s.patientAddress, 'Jenis Asistensi': s.assistanceType, 'Tgl Kegiatan': s.activityDate, 'Waktu': s.activityTime, 'Rute': s.serviceRoute, 'Zona': s.serviceZone, 'Monitoring Extra': s.extraMonitoring ? 'Ya' : 'Tidak', 'Petugas': (s.officers || []).map(o => o.name).join(', '), 'Status Petugas': (s.officers || []).map(o => o.status).join(', '), 'Total Fee (Rp)': (s.officers || []).reduce((sum, o) => sum + (parseFloat(o.fee) || 0), 0), 'Rincian Fee': (s.officers || []).map(o => `${o.name}: ${formatCurrency(o.fee)}`).join('; '), 'Bank': (s.officers || []).filter(o=>o.status==='Freelance').map(o => `${o.name}: ${o.bankName || 'N/A'}`).join('; '), 'No. Rekening': (s.officers || []).filter(o=>o.status==='Freelance').map(o => `${o.name}: ${o.accountNumber || 'N/A'}`).join('; '), 'Tagihan Freelance': s.freelanceBillingDetails, 'Harga Jaminan (Rp)': s.servicePrice, 'Harga Invoice (Rp)': s.invoicePrice, 'Link Invoice': s.invoiceLink, 'Link Dok. Medis': s.medicalDocLink, 'Link Surat Jaminan': s.guaranteeLetterLink, 'Link Medical Record': s.medicalRecordLink, 'Catatan': s.otherNotes
+            'No. Ref': s.referenceNumber, 'Klien': s.insuranceClient, 'Pasien': s.patientName, 'Tgl Lahir': s.patientDob, 'Gender': s.patientGender, 'Alamat': s.patientAddress, 'Jenis Asistensi': s.assistanceType, 'Tgl Kegiatan': s.activityDate, 'Waktu': s.activityTime, 'Rute': s.serviceRoute, 'Zona': s.serviceZone, 'Monitoring Extra': s.extraMonitoring ? 'Ya' : 'Tidak', 'Petugas': (s.officers || []).map(o => o.name).join(', '), 'Status Petugas': (s.officers || []).map(o => o.status).join(', '), 'Total Fee (Rp)': (s.officers || []).reduce((sum, o) => sum + (parseFloat(o.fee) || 0), 0), 'Rincian Fee': (s.officers || []).map(o => `${o.name}: ${formatCurrency(o.fee)}`).join('; '), 'Bank': (s.officers || []).filter(o=>o.status==='Freelance').map(o => `${o.name}: ${o.bankName || 'N/A'}`).join('; '), 'No. Rekening': (s.officers || []).filter(o=>o.status==='Freelance').map(o => `${o.name}: ${o.accountNumber || 'N/A'}`).join('; '), 'Tagihan Freelance': s.freelanceBillingDetails, 'Harga Jaminan (Rp)': s.servicePrice, 'Harga Invoice (Rp)': s.invoicePrice, 
+            'Link Invoice': (s.invoiceLinks || []).join('\n'), 
+            'Link Dok. Medis': (s.medicalDocLinks || []).join('\n'), 
+            'Link Surat Jaminan': (s.guaranteeLetterLinks || []).join('\n'), 
+            'Link Dok. Non Medis': (s.nonMedicalDocLinks || []).join('\n'),
+            'Link Medical Record': (s.medicalRecordLinks || []).join('\n'), 
+            'Catatan': s.otherNotes
         }));
         const worksheet = XLSX.utils.json_to_sheet(dataForExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Jadwal');
-        const colWidths = Object.keys(dataForExport[0]).map(key => ({ wch: (dataForExport.reduce((max, row) => Math.max(max, (row[key] || '').length, key.length), 0)) + 2 }));
+        // Auto-adjust column widths (simple estimation)
+        const colWidths = Object.keys(dataForExport[0]).map(key => {
+             // Find the maximum length of the cell content in the column including header
+             let maxLen = key.length;
+             dataForExport.forEach(row => {
+                 const cellContent = row[key] || '';
+                 // Split by newline and find the longest line
+                 const lines = String(cellContent).split('\n');
+                 const maxLineLen = lines.reduce((maxL, line) => Math.max(maxL, line.length), 0);
+                 if (maxLineLen > maxLen) {
+                     maxLen = maxLineLen;
+                 }
+             });
+             return { wch: maxLen + 2 }; // Add padding
+        });
         worksheet['!cols'] = colWidths;
+        
         XLSX.writeFile(workbook, `Jadwal_${startDate}_sd_${endDate}.xlsx`);
     };
     
@@ -635,14 +799,19 @@ const mainApp = () => {
             modalTitle.textContent = 'Edit Jadwal';
             scheduleIdInput.value = schedule.id;
             Object.keys(schedule).forEach(key => {
-                const input = document.getElementById(key);
-                if(input) {
-                    if(input.type === 'checkbox') input.checked = schedule[key];
-                    else input.value = schedule[key];
+                // Skip link arrays here, they will be handled by populateLinkContainers
+                if (!key.endsWith('Links')) {
+                    const input = document.getElementById(key);
+                    if(input) {
+                        if(input.type === 'checkbox') input.checked = schedule[key];
+                        else input.value = schedule[key];
+                    }
                 }
             });
-            // Specifically handle the isComplete checkbox
             document.getElementById('isComplete').checked = schedule.isComplete || false;
+            
+            // Populate dynamic links
+            populateLinkContainers(schedule);
 
             officersContainer.innerHTML = '';
             if (schedule.officers && schedule.officers.length > 0) {
@@ -661,7 +830,18 @@ const mainApp = () => {
     scheduleForm.addEventListener('submit', handleFormSubmit);
     addOfficerBtn.addEventListener('click', () => addOfficerRow());
     assistanceTypeSelect.addEventListener('change', () => {
-        medicalRecordLinkContainer.classList.toggle('hidden', assistanceTypeSelect.value !== 'Home Visite');
+        const isHomeVisite = assistanceTypeSelect.value === 'Home Visite';
+        // Handle visibility for both the container and the link fields inside
+        const medRecContainer = document.getElementById('medicalRecordLinkContainer');
+        if (isHomeVisite) {
+            medRecContainer.classList.remove('hidden');
+            // Ensure the initial input is added if it was hidden
+            if(medRecContainer.querySelectorAll('.link-input-group').length === 0) {
+                 addLinkInput('medicalRecordLinkContainer');
+            }
+        } else {
+            medRecContainer.classList.add('hidden');
+        }
         checkFreelanceBillingVisibility();
     });
     extraMonitoringCheckbox.addEventListener('change', (e) => {
@@ -683,13 +863,20 @@ const mainApp = () => {
         } else if (button.classList.contains('delete-btn')) {
             const confirmed = await openConfirmDialog();
             if (confirmed) {
-                 await deleteDoc(doc(db, "schedules", id));
+                 try {
+                     await deleteDoc(doc(db, "schedules", id));
+                 } catch (error) {
+                      console.error("Error deleting document: ", error);
+                      alert("Gagal menghapus data.");
+                 }
             }
         } else if (button.classList.contains('view-btn')) {
              const schedule = localSchedules.find(s => s.id === id);
              if(schedule) {
                 let officerDetails = (schedule.officers || []).map(o => `  - ${o.name} (${o.status}, Fee: ${formatCurrency(o.fee)})` + (o.status === 'Freelance' ? ` | Bank: ${o.bankName} - ${o.accountNumber}`: '')).join('\n');
-                alert(`DETAIL JADWAL\n--------------------------------------\nNo. Ref: ${schedule.referenceNumber||'N/A'}\nKlien: ${schedule.insuranceClient||'N/A'}\nPasien: ${schedule.patientName} (${formatDate(schedule.patientDob)}, ${schedule.patientGender})\nAlamat: ${schedule.patientAddress||'N/A'}\n--------------------------------------\nLayanan: ${schedule.assistanceType} | Zona: ${schedule.serviceZone||'N/A'}\nTanggal: ${formatDate(schedule.activityDate)} @ ${schedule.activityTime}\nRute: ${schedule.serviceRoute||'N/A'}\nMonitoring Extra: ${schedule.extraMonitoring?'Ya':'Tidak'}\nStatus: ${schedule.isComplete ? 'Selesai':'Aktif'}\n--------------------------------------\nPetugas:\n${officerDetails}\n--------------------------------------\nHarga Jaminan: ${formatCurrency(schedule.servicePrice)}\nHarga Invoice: ${formatCurrency(schedule.invoicePrice)}\n--------------------------------------\nTagihan Freelance: ${schedule.freelanceBillingDetails||'N/A'}\nCatatan Lain: ${schedule.otherNotes||'N/A'}`);
+                // Format links for display
+                const formatLinks = (links) => (links && links.length > 0) ? links.join(', ') : 'N/A';
+                alert(`DETAIL JADWAL\n--------------------------------------\nNo. Ref: ${schedule.referenceNumber||'N/A'}\nKlien: ${schedule.insuranceClient||'N/A'}\nPasien: ${schedule.patientName} (${formatDate(schedule.patientDob)}, ${schedule.patientGender})\nAlamat: ${schedule.patientAddress||'N/A'}\n--------------------------------------\nLayanan: ${schedule.assistanceType} | Zona: ${schedule.serviceZone||'N/A'}\nTanggal: ${formatDate(schedule.activityDate)} @ ${schedule.activityTime}\nRute: ${schedule.serviceRoute||'N/A'}\nMonitoring Extra: ${schedule.extraMonitoring?'Ya':'Tidak'}\nStatus: ${schedule.isComplete ? 'Selesai':'Aktif'}\n--------------------------------------\nPetugas:\n${officerDetails}\n--------------------------------------\nHarga Jaminan: ${formatCurrency(schedule.servicePrice)}\nHarga Invoice: ${formatCurrency(schedule.invoicePrice)}\n--------------------------------------\nLink Invoice: ${formatLinks(schedule.invoiceLinks)}\nLink Dok. Medis: ${formatLinks(schedule.medicalDocLinks)}\nLink Srt Jaminan: ${formatLinks(schedule.guaranteeLetterLinks)}\nLink Dok. Non Medis: ${formatLinks(schedule.nonMedicalDocLinks)}\nLink MedRec: ${formatLinks(schedule.medicalRecordLinks)}\n--------------------------------------\nTagihan Freelance: ${schedule.freelanceBillingDetails||'N/A'}\nCatatan Lain: ${schedule.otherNotes||'N/A'}`);
              }
         } else if (button.classList.contains('card-btn')) {
             const schedule = localSchedules.find(s => s.id === id);
@@ -705,8 +892,13 @@ const mainApp = () => {
                 document.getElementById('cardPatientDobAndAge').textContent = `${formatDate(schedule.patientDob)} ${ageText}`;
                 document.getElementById('cardActivityDateTime').textContent = `${formatDate(schedule.activityDate)} pukul ${schedule.activityTime || ''}`;
                 const linkContainer = document.getElementById('cardMedicalDocLink');
-                if (schedule.medicalDocLink) {
-                    linkContainer.innerHTML = `<a href="${schedule.medicalDocLink}" target="_blank" class="text-[--color-primary] hover:underline break-all">${schedule.medicalDocLink}</a>`;
+                const medicalLinks = schedule.medicalDocLinks || [];
+                if (medicalLinks.length > 0) {
+                    let linkHtml = `<a href="${medicalLinks[0]}" target="_blank" class="text-[--color-primary] hover:underline break-all">${medicalLinks[0]}</a>`;
+                    if (medicalLinks.length > 1) {
+                         linkHtml += ` <span class="text-sm text-slate-500">(+${medicalLinks.length - 1} lainnya)</span>`;
+                    }
+                     linkContainer.innerHTML = linkHtml;
                 } else {
                     linkContainer.textContent = 'Tidak ada';
                 }
@@ -729,6 +921,7 @@ const mainApp = () => {
         }
     });
 
+    setupLinkContainers(); // Initialize dynamic link fields in the form
     listenForSchedules(); // Start listening for real-time updates
 };
 
